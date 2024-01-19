@@ -8,7 +8,7 @@ import (
 
 func routes() http.Handler {
   
-  app.Mux.HandleFunc("/", handlers.Home)
+  app.Mux.HandleFunc("/", handlers.Repo.Home)
   app.Mux.HandleFunc("/user/login", handlers.Login)
   app.Mux.HandleFunc("/user/profile", handlers.Profile)
 
