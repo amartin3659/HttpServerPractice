@@ -11,7 +11,7 @@ func (m *Seed) seedUsers() {
 		{
 			ID:        "550e8400-e29b-41d4-a716-446655440010",
 			Name:      "Alex Martin",
-			Email:     "alexjmartin104@gmail.com",
+			Email:     "amartin.code@gmail.com",
 			Password:  "$2a$10$WXdfUSKy0shI/yJ15CUgh.Tt72tNYwFGlNBHxark5uVlZNbyzeyga",
 			Role:      models.Admin,
 			CreatedAt: time.Now(),
