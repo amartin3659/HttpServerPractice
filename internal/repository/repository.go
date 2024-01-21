@@ -11,6 +11,7 @@ type DatabaseRepo interface {
   Login()
   Logout()
   GetUserByID(id string) (models.User, error)
+  GetUserByEmail(email string) (models.User, error)
   GetAllPosts() ([]models.Post, error)
   GetPostsByUserID(id string) ([]models.Post, error)
   GetPostByID(id string) (models.Post, error)

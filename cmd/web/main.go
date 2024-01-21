@@ -8,6 +8,7 @@ import (
 	"github.com/amartin3659/HttpServerPractice/internal/driver"
 	"github.com/amartin3659/HttpServerPractice/internal/handlers"
 	"github.com/amartin3659/HttpServerPractice/internal/helpers"
+	"github.com/amartin3659/HttpServerPractice/internal/session"
 	"github.com/amartin3659/HttpServerPractice/migrations"
 )
 
@@ -18,6 +19,7 @@ func main() {
   app.SetInfoLog()
   app.SetErrorLog()
   app.SetMux(http.NewServeMux())
+  app.SetSession(session.New())
 
   db := driver.NewDB()
   seed := migrations.NewSeed(db)

@@ -17,6 +17,7 @@ func routes() http.Handler {
       handlers.Repo.PostLogin(w, r)
     }
   }))
+  app.Mux.HandleFunc("/error", handlers.Repo.ErrorPage)
   app.Mux.HandleFunc("/user/logout", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case http.MethodGet:
@@ -26,14 +27,21 @@ func routes() http.Handler {
     }
   }))
   app.Mux.HandleFunc("/user/profile/", handlers.Repo.Profile)
-  app.Mux.HandleFunc("/post/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+  app.Mux.HandleFunc("/post/", handlers.Repo.GetPost)
+  app.Mux.HandleFunc("/user/post", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case http.MethodGet:
-      handlers.Repo.GetPost(w, r)
+      handlers.Repo.GetNewPost(w, r)
     case http.MethodPost:
-      handlers.Repo.PostPost(w, r)
-    case http.MethodPut:
-      handlers.Repo.UpdatePost(w, r)
+      handlers.Repo.PostNewPost(w, r)
+    }
+  }))
+  app.Mux.HandleFunc("/user/post/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case http.MethodGet:
+      handlers.Repo.GetUpdatePost(w, r)
+    case http.MethodPost:
+      handlers.Repo.PostUpdatePost(w, r)
     }
   }))
 
