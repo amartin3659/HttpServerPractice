@@ -37,16 +37,15 @@ func routes() http.Handler {
 		}
 	}))
 	postPath := "/user/post/"
-	app.Mux.Handle(postPath, http.StripPrefix(postPath, http.HandlerFunc(postHandler)))
+	app.Mux.Handle(postPath, http.StripPrefix(postPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+  	switch r.Method {
+	  case http.MethodGet:
+		  handlers.Repo.GetUpdatePost(w, r)
+	  case http.MethodPost:
+		  handlers.Repo.PostUpdatePost(w, r)
+	  }
+  })))
+
 	return app.Mux
 
-}
-
-func postHandler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		handlers.Repo.GetUpdatePost(w, r)
-	case http.MethodPost:
-		handlers.Repo.PostUpdatePost(w, r)
-	}
 }

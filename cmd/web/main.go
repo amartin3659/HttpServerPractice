@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 
@@ -15,6 +16,24 @@ import (
 var app config.AppConfig
 
 func main() {
+  err := run()
+  if err != nil {
+    fmt.Println("Error")
+  }
+  
+  server := &http.Server{
+    Addr: os.Getenv("port"),
+    Handler: routes(),
+  }
+
+  err = server.ListenAndServe()
+  if err != nil {
+    app.ErrorLog.Println(err)
+  }
+}
+
+func run() error {
+  
   app.SetInProduction(false)
   app.SetInfoLog()
   app.SetErrorLog()
@@ -28,14 +47,6 @@ func main() {
   handlers.NewHandlers(repo)
   helpers.NewHelpers(&app)
 
-  server := &http.Server{
-    Addr: os.Getenv("port"),
-    Handler: routes(),
-  }
 
-  err := server.ListenAndServe()
-  if err != nil {
-    app.ErrorLog.Println(err)
-  }
-
+  return nil
 }
