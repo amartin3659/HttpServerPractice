@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/amartin3659/HttpServerPractice/internal/handlers"
@@ -38,17 +37,16 @@ func routes() http.Handler {
 		}
 	}))
 	postPath := "/user/post/"
-	app.Mux.Handle(postPath, http.StripPrefix(postPath, http.HandlerFunc(post)))
+	app.Mux.Handle(postPath, http.StripPrefix(postPath, http.HandlerFunc(postHandler)))
 	return app.Mux
 
 }
 
-func post(w http.ResponseWriter, r *http.Request) {
+func postHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		handlers.Repo.GetUpdatePost(w, r)
 	case http.MethodPost:
-    fmt.Println("Routes", r.URL.Path)
 		handlers.Repo.PostUpdatePost(w, r)
 	}
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/amartin3659/HttpServerPractice/internal/repository"
 	"github.com/amartin3659/HttpServerPractice/internal/repository/dbrepo"
 	"github.com/amartin3659/HttpServerPractice/internal/session"
+	"github.com/amartin3659/HttpServerPractice/internal/templates"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -80,31 +81,7 @@ func (m *Repository) GetLogin(w http.ResponseWriter, r *http.Request) {
 		}
     fmt.Println("Session not found")
 	}
-	htmlTemplate := `
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Login</title>
-</head>
-<body>
-  <form method="POST" action="/user/login" novalidate>
-      <label for="email">Email:</lable>
-      <br>
-      <input type="email" name="email" />
-      <br>
-      <br>
-      <label for="password">Password:</label>
-      <br>
-      <input type="password" name="password" />
-      <br>
-      <br>
-      <button type="submit">Login</button>
-      <br>
-      <br>
-    </form>
-</body>
-</html>
-`
+	htmlTemplate := templates.LoginTemplate()
 	tmpl, err := template.New("Login").Parse(htmlTemplate)
 	if err != nil {
 		fmt.Println(err)
@@ -384,31 +361,7 @@ func (m *Repository) GetUpdatePost(w http.ResponseWriter, r *http.Request) {
     http.Redirect(w, r, "/", http.StatusSeeOther)
     return
   }
-	htmlTemplate := fmt.Sprintf(`
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Update Post</title>
-</head>
-<body>
-  <form method="POST" action="/user/post/%s" novalidate enctype="application/x-www-form-urlencoded">
-      <label for="title">Title:</lable>
-      <br>
-      <input type="text" name="title" />
-      <br>
-      <br>
-      <label for="body">Body:</label>
-      <br>
-      <textarea name="body" rows="10" cols="30"></textarea>
-      <br>
-      <br>
-      <button type="submit">Update</button>
-      <br>
-      <br>
-    </form>
-</body>
-</html>
-`, postID)
+	htmlTemplate := templates.PostTemplate(postID)
 	tmpl, err := template.New("UpdatePost").Parse(htmlTemplate)
 	if err != nil {
 		fmt.Println(err)
