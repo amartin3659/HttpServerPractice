@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/amartin3659/HttpServerPractice/internal/config"
 	"github.com/amartin3659/HttpServerPractice/internal/driver"
@@ -265,7 +266,19 @@ func (m *Repository) GetPost(w http.ResponseWriter, r *http.Request) {
 
 func (m *Repository) GetNewPost(w http.ResponseWriter, r *http.Request) {
   // must be logged into make post
-  // redirect to login
+  cookie, err := r.Cookie("session")
+  if err != nil {
+    fmt.Println("Need to be logged in to make post")
+    // redirect to login
+    http.Redirect(w, r, "/user/login", http.StatusTemporaryRedirect)
+    return
+  }
+  userID, _ := m.App.Session.Get(uuid.MustParse(cookie.Value))
+  if uuid.Nil == userID {
+    fmt.Println("Session is not valid")
+    http.Redirect(w, r, "/user/login", http.StatusTemporaryRedirect)
+    return
+  }
 	htmlTemplate := `
 <!DOCTYPE html>
 <html>
@@ -307,20 +320,78 @@ func (m *Repository) GetNewPost(w http.ResponseWriter, r *http.Request) {
 func (m *Repository) PostNewPost(w http.ResponseWriter, r *http.Request) {
   // add new post with userID
   // if session ended between creating post and submitting it, just redirect to login page
+  cookie, err := r.Cookie("session")
+  if err != nil {
+    fmt.Println("Need to be logged in to make post")
+    // redirect to login
+    http.Redirect(w, r, "/user/login", http.StatusTemporaryRedirect)
+    return
+  }
+  userID, _ := m.App.Session.Get(uuid.MustParse(cookie.Value))
+  if uuid.Nil == userID {
+    fmt.Println("Session is not valid")
+    http.Redirect(w, r, "/user/login", http.StatusTemporaryRedirect)
+    return
+  }
+	err = r.ParseForm()
+	if err != nil {
+		fmt.Println("Error parsing form data")
+		http.Redirect(w, r, "/error", http.StatusUnauthorized)
+		return
+	}
+  title := r.PostForm.Get("title")
+  body := r.PostForm.Get("body")
+  newPost := models.Post{
+    ID: uuid.New(),
+    UserID: userID.String(),
+    Title: title,
+    Body: body,
+    CreatedAt: time.Now(),
+    UpdatedAt: time.Now(),
+  }
+  m.DB.AddPost(newPost)
+  http.Redirect(w, r, "/post/"+newPost.ID.String(), http.StatusSeeOther)
+  return
 }
 
 func (m *Repository) GetUpdatePost(w http.ResponseWriter, r *http.Request) {
   // again need to be logged in, redirect if not logged in
   // grab post id from url, if doesn't exist display error
   // if exists populate fields with post data
-	htmlTemplate := `
+	path := r.URL.Path
+	postID := r.URL.Path
+	post, err := m.DB.GetPostByID(postID)
+  fmt.Println(path)
+	if err != nil {
+		fmt.Println("Error getting post")
+	}
+  userID := uuid.MustParse(post.UserID)
+  cookie, err := r.Cookie("session")
+  if err != nil {
+    fmt.Println("Need to be logged in to make post")
+    // redirect to login
+    http.Redirect(w, r, "/user/login", http.StatusTemporaryRedirect)
+    return
+  }
+  cUserID, _ := m.App.Session.Get(uuid.MustParse(cookie.Value))
+  if uuid.Nil == cUserID {
+    fmt.Println("Session is not valid")
+    http.Redirect(w, r, "/user/login", http.StatusTemporaryRedirect)
+    return
+  }
+  if userID != cUserID {
+    fmt.Println("Can only edit your own posts")
+    http.Redirect(w, r, "/", http.StatusSeeOther)
+    return
+  }
+	htmlTemplate := fmt.Sprintf(`
 <!DOCTYPE html>
 <html>
 <head>
     <title>Update Post</title>
 </head>
 <body>
-  <form method="POST" action="/user/post/" novalidate>
+  <form method="POST" action="/user/post/%s" novalidate enctype="application/x-www-form-urlencoded">
       <label for="title">Title:</lable>
       <br>
       <input type="text" name="title" />
@@ -337,7 +408,7 @@ func (m *Repository) GetUpdatePost(w http.ResponseWriter, r *http.Request) {
     </form>
 </body>
 </html>
-`
+`, postID)
 	tmpl, err := template.New("UpdatePost").Parse(htmlTemplate)
 	if err != nil {
 		fmt.Println(err)
@@ -354,4 +425,56 @@ func (m *Repository) GetUpdatePost(w http.ResponseWriter, r *http.Request) {
 func (m *Repository) PostUpdatePost(w http.ResponseWriter, r *http.Request) {
   // redirect to login page if session is expired
   // update post with new contents
+  path := r.URL.Path
+  fmt.Println(path)
+	postID := r.URL.Path
+	post, err := m.DB.GetPostByID(postID)
+	if err != nil {
+		fmt.Println("Error getting post")
+    http.Redirect(w, r, "/error", http.StatusTemporaryRedirect)
+    return
+	}
+  userID := uuid.MustParse(post.UserID)
+  cookie, err := r.Cookie("session")
+  if err != nil {
+    fmt.Println("Need to be logged in to make post")
+    // redirect to login
+    http.Redirect(w, r, "/user/login", http.StatusTemporaryRedirect)
+    return
+  }
+  cUserID, _ := m.App.Session.Get(uuid.MustParse(cookie.Value))
+  if uuid.Nil == cUserID {
+    fmt.Println("Session is not valid")
+    http.Redirect(w, r, "/user/login", http.StatusTemporaryRedirect)
+    return
+  }
+  if userID != cUserID {
+    fmt.Println("Can only edit your own posts")
+    http.Redirect(w, r, "/", http.StatusSeeOther)
+    return
+  }
+  err = r.ParseForm()
+  if err != nil {
+    fmt.Println("Could not parse form")
+    http.Redirect(w, r, "/error", http.StatusTemporaryRedirect)
+    return
+  }
+  title := r.PostForm.Get("title")
+  body := r.PostForm.Get("body")
+  nPost := models.Post{
+    ID: uuid.MustParse(postID),
+    UserID: userID.String(),
+    Title: title,
+    Body: body,
+    CreatedAt: post.CreatedAt,
+    UpdatedAt: time.Now(),
+  }
+  uPost, err := m.DB.UpdatePost(nPost)
+  if err != nil {
+    fmt.Println("Could not update")
+    http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+    return
+  }
+  http.Redirect(w, r, "/post/"+uPost.ID.String(), http.StatusSeeOther)
+  return
 }

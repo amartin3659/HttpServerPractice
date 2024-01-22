@@ -2,6 +2,7 @@ package dbrepo
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/amartin3659/HttpServerPractice/internal/models"
 	"github.com/google/uuid"
@@ -49,6 +50,7 @@ func (m *mockRepo) GetPostByID(id string) (models.Post, error) {
   for _, post := range m.DB.Posts {
     pid, err := uuid.Parse(id)
     if err != nil {
+      fmt.Println("Cannot parse uuid")
       return models.Post{}, errors.New("Cannot parse id")
     }
     if post.ID == pid {
@@ -58,10 +60,17 @@ func (m *mockRepo) GetPostByID(id string) (models.Post, error) {
   return models.Post{}, errors.New("Post not found")
 }
 
-func (m *mockRepo) AddPost(models.Post) error {
+func (m *mockRepo) AddPost(post models.Post) error {
+  m.DB.Posts = append(m.DB.Posts, post)
   return nil
 }
 
-func (m *mockRepo) UpdatePost(models.Post) (models.Post, error) {
-  return models.Post{}, nil
+func (m *mockRepo) UpdatePost(p models.Post) (models.Post, error) {
+  for i, post := range m.DB.Posts {
+    if post.ID == p.ID {
+      m.DB.Posts[i] = p 
+      return p, nil
+    }
+  }
+  return models.Post{}, errors.New("Could not update")
 }
