@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"testing"
@@ -27,15 +28,16 @@ func TestMain(m *testing.M) {
 func run() error {
   
   app.SetInProduction(false)
-  app.SetInfoLog()
-  app.SetErrorLog()
+  // app.SetInfoLog()
+  // app.SetErrorLog()
+  errorLog := log.New(os.Stdout, "[ERROR]\t", log.Ldate|log.Ltime|log.Lshortfile)
+  app.ErrorLog = errorLog
   app.SetMux(http.NewServeMux())
   app.SetSession(session.New())
-
   db := driver.NewDB()
   seed := migrations.NewSeed(db)
-  seed.Seed()
-  repo := NewRepo(&app, db)
+  seed.TestSeed()
+  repo := NewTestRepo(&app, db)
   NewHandlers(repo)
   helpers.NewHelpers(&app)
 

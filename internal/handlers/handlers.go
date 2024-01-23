@@ -34,6 +34,13 @@ func NewRepo(app *config.AppConfig, db *driver.DB) *Repository {
 	}
 }
 
+func NewTestRepo(app *config.AppConfig, db *driver.DB) *Repository {
+	return &Repository{
+		App: app,
+		DB:  dbrepo.NewTestRepo(db),
+	}
+}
+
 func NewHandlers(repo *Repository) {
 	Repo = repo
 }
@@ -43,6 +50,7 @@ func formatAndWrite(input any, w http.ResponseWriter) {
 	output, err := json.MarshalIndent(input, "", "    ")
 	if err != nil {
 		helpers.ServerError(w, err)
+    return
 	}
 	w.Header().Set("Content=Type", "application/json")
 	w.Write(output)
@@ -51,8 +59,7 @@ func formatAndWrite(input any, w http.ResponseWriter) {
 func (m *Repository) Home(w http.ResponseWriter, r *http.Request) {
 	posts, err := m.DB.GetAllPosts()
 	if err != nil {
-    fmt.Println("No posts")
-    w.Write([]byte("No posts"))
+    http.Redirect(w, r, "/error", http.StatusTemporaryRedirect)
     return
 	}
 	var resp = []models.PostsResponse{}
@@ -152,19 +159,7 @@ func (m *Repository) ErrorPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *Repository) GetLogout(w http.ResponseWriter, r *http.Request) {
-	htmlTemplate := `
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Logout</title>
-</head>
-<body>
-  <form method="POST" action="/user/logout" novalidate>
-      <button type="submit">Logout</button>
-    </form>
-</body>
-</html>
-`
+	htmlTemplate := templates.GetLogout()
 	tmpl, err := template.New("Logout").Parse(htmlTemplate)
 	if err != nil {
 		fmt.Println(err)
@@ -183,6 +178,7 @@ func (m *Repository) PostLogout(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println("No session data")
 		http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+    return
 	}
   sessionID := uuid.MustParse(cookie.Value)
 	expireCookie := http.Cookie{
@@ -202,6 +198,8 @@ func (m *Repository) Profile(w http.ResponseWriter, r *http.Request) {
 	user, err := m.DB.GetUserByID(userID)
 	if err != nil {
 		fmt.Println("Error getting user")
+    http.Redirect(w, r, "/error", http.StatusTemporaryRedirect)
+    return
 	}
 	resp := models.UserResponse{
 		ID:    user.ID,
@@ -229,8 +227,8 @@ func (m *Repository) GetPost(w http.ResponseWriter, r *http.Request) {
 	postID := strings.Split(path, "/")[2]
 	post, err := m.DB.GetPostByID(postID)
 	if err != nil {
-		helpers.ServerError(w, err)
-		fmt.Fprint(w, "There was an error")
+    http.Redirect(w, r, "/error", http.StatusTemporaryRedirect)
+    return
 	}
 	resp := models.PostsResponse{
 		UserID: post.UserID,
@@ -239,6 +237,7 @@ func (m *Repository) GetPost(w http.ResponseWriter, r *http.Request) {
 		ID:     post.ID.String(),
 	}
 	formatAndWrite(resp, w)
+  return
 }
 
 func (m *Repository) GetNewPost(w http.ResponseWriter, r *http.Request) {
@@ -358,7 +357,7 @@ func (m *Repository) GetUpdatePost(w http.ResponseWriter, r *http.Request) {
   }
   if userID != cUserID {
     fmt.Println("Can only edit your own posts")
-    http.Redirect(w, r, "/", http.StatusSeeOther)
+    http.Redirect(w, r, "/home", http.StatusSeeOther)
     return
   }
 	htmlTemplate := templates.PostTemplate(postID)
@@ -403,7 +402,7 @@ func (m *Repository) PostUpdatePost(w http.ResponseWriter, r *http.Request) {
   }
   if userID != cUserID {
     fmt.Println("Can only edit your own posts")
-    http.Redirect(w, r, "/", http.StatusSeeOther)
+    http.Redirect(w, r, "/home", http.StatusSeeOther)
     return
   }
   err = r.ParseForm()
@@ -425,7 +424,7 @@ func (m *Repository) PostUpdatePost(w http.ResponseWriter, r *http.Request) {
   uPost, err := m.DB.UpdatePost(nPost)
   if err != nil {
     fmt.Println("Could not update")
-    http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+    http.Redirect(w, r, "/home", http.StatusTemporaryRedirect)
     return
   }
   http.Redirect(w, r, "/post/"+uPost.ID.String(), http.StatusSeeOther)

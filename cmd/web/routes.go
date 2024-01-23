@@ -8,7 +8,15 @@ import (
 
 func routes() http.Handler {
 
-	app.Mux.HandleFunc("/", handlers.Repo.Home)
+	app.Mux.HandleFunc("/home", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case http.MethodGet:
+      handlers.Repo.Home(w, r)
+    default:
+      http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+      return
+    }
+  }))
 	app.Mux.HandleFunc("/user/login", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:

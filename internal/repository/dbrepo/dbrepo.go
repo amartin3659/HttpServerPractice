@@ -15,3 +15,13 @@ func NewMockRepo(conn *driver.DB) repository.DatabaseRepo {
     DB: conn,
   }
 }
+
+type testRepo struct {
+  DB *driver.DB
+}
+
+func NewTestRepo(conn *driver.DB) repository.DatabaseRepo {
+  return &testRepo{
+    DB: conn,
+  }
+}
