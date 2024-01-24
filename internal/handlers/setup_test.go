@@ -88,3 +88,13 @@ func routes() http.Handler {
 	return app.Mux
 
 }
+
+func removeCookie(w http.ResponseWriter, cookieName string) {
+  removeCookie := &http.Cookie{
+    Name: cookieName,
+    Value: "",
+    MaxAge: -1,
+    Path: "/",
+  }
+  http.SetCookie(w, removeCookie)
+}

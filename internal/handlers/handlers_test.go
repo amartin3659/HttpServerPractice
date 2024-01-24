@@ -286,3 +286,324 @@ func TestGetPost(t *testing.T) {
   }
 }
 
+func TestGetNewPost(t *testing.T) {
+  // no session
+  req := httptest.NewRequest("GET", "/user/post", nil)
+  rr := httptest.NewRecorder()
+  handler := http.HandlerFunc(Repo.GetNewPost)
+  handler.ServeHTTP(rr, req)
+  if rr.Code != http.StatusTemporaryRedirect {
+    t.Error("Expected a different code")
+  }
+  // invalid session
+  req = httptest.NewRequest("GET", "/user/post", nil)
+  rr = httptest.NewRecorder()
+  handler = http.HandlerFunc(Repo.GetNewPost)
+  cookie := &http.Cookie{
+    Name: "session",
+    Value: "550e8400-e29b-41d4-a716-446655440010",
+    Path: "/",
+  }
+  req.AddCookie(cookie)
+  handler.ServeHTTP(rr, req)
+  if rr.Code != http.StatusTemporaryRedirect {
+    t.Error("Expected a different code")
+  }
+  // ok
+  // login
+  postData := url.Values{}
+  postData.Add("email", "valid@text.com")
+  postData.Add("password", "password")
+  req = httptest.NewRequest("POST", "/user/login", strings.NewReader(postData.Encode()))
+  rr = httptest.NewRecorder()
+  handler = http.HandlerFunc(Repo.PostLogin)
+  req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+  handler.ServeHTTP(rr, req)
+  if rr.Code != http.StatusSeeOther {
+    t.Error("Expected a different code")
+  }
+  var sessionCookie *http.Cookie
+  for _, cookie := range rr.Result().Cookies() {
+    if cookie.Name == "session" {
+      sessionCookie = cookie
+      break
+    }
+  }
+  if sessionCookie == nil {
+    t.Error("Session cookie was not set")
+  }
+  req = httptest.NewRequest("GET", "/user/post", nil)
+  rr = httptest.NewRecorder()
+  handler = http.HandlerFunc(Repo.GetNewPost)
+  req.AddCookie(sessionCookie)
+  handler.ServeHTTP(rr, req)
+  if rr.Code != http.StatusOK {
+    t.Error("Expected a different code")
+  }
+}
+
+func TestPostNewPost(t *testing.T) {
+  // no session
+  req := httptest.NewRequest("POST", "/user/post", nil)
+  rr := httptest.NewRecorder()
+  handler := http.HandlerFunc(Repo.PostNewPost)
+  handler.ServeHTTP(rr, req)
+  if rr.Code != http.StatusTemporaryRedirect {
+    t.Error("Expected a different code", rr.Code)
+  }
+  // invalid session
+  req = httptest.NewRequest("POST", "/user/post", nil)
+  rr = httptest.NewRecorder()
+  handler = http.HandlerFunc(Repo.PostNewPost)
+  cookie := &http.Cookie{
+    Name: "session",
+    Value: "550e8400-e29b-41d4-a716-446655440010",
+    Path: "/",
+  }
+  req.AddCookie(cookie)
+  handler.ServeHTTP(rr, req)
+  if rr.Code != http.StatusTemporaryRedirect {
+    t.Error("Expected a different code")
+  }
+  // could not parse form
+  postData := url.Values{}
+  postData.Add("email", "valid@text.com")
+  postData.Add("password", "password")
+  req = httptest.NewRequest("POST", "/user/login", strings.NewReader(postData.Encode()))
+  rr = httptest.NewRecorder()
+  handler = http.HandlerFunc(Repo.PostLogin)
+  req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+  handler.ServeHTTP(rr, req)
+  if rr.Code != http.StatusSeeOther {
+    t.Error("Expected a different code")
+  }
+  var sessionCookie *http.Cookie
+  for _, cookie := range rr.Result().Cookies() {
+    if cookie.Name == "session" {
+      sessionCookie = cookie
+      break
+    }
+  }
+  if sessionCookie == nil {
+    t.Error("Session cookie was not set")
+  }
+  // has to be http.NewRequest to test form error
+  req, _ = http.NewRequest("POST", "/user/post", nil)
+  req.AddCookie(sessionCookie)
+  rr = httptest.NewRecorder()
+  handler = http.HandlerFunc(Repo.PostNewPost)
+  handler.ServeHTTP(rr, req)
+  if rr.Code != http.StatusUnauthorized {
+    t.Error("Expected a different code")
+  }
+  // ok
+  postData = url.Values{}
+  postData.Add("title", "test title")
+  postData.Add("body", "test body")
+  req = httptest.NewRequest("POST", "/user/post", strings.NewReader(postData.Encode()))
+  req.AddCookie(sessionCookie)
+  req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+  rr = httptest.NewRecorder()
+  handler = http.HandlerFunc(Repo.PostNewPost)
+  handler.ServeHTTP(rr, req)
+  if rr.Code != http.StatusSeeOther {
+    t.Error("Expected a different code")
+  }
+}
+
+func TestGetUpdatePost(t *testing.T) {
+  // no post
+  req := httptest.NewRequest("GET", "/user/post/123", nil)
+  rr := httptest.NewRecorder()
+  handler := http.HandlerFunc(Repo.GetUpdatePost)
+  handler.ServeHTTP(rr, req)
+  if rr.Code != http.StatusTemporaryRedirect {
+    t.Error("Expected a different code")
+  }
+  // no session
+  postID := uuid.New()
+  newPost := models.Post{
+    ID: postID,
+    Title: "Title",
+    Body: "Body",
+    UserID: "550e8400-e29b-41d4-a716-446655440001",
+    CreatedAt: time.Now(),
+    UpdatedAt: time.Now(),
+  }
+  Repo.DB.AddPost(newPost)
+  req = httptest.NewRequest("GET", "/user/post/"+postID.String(), nil)
+  rr = httptest.NewRecorder()
+  handler = http.HandlerFunc(Repo.GetUpdatePost)
+  handler.ServeHTTP(rr, req)
+  if rr.Code != http.StatusTemporaryRedirect {
+    t.Error("Expected a different code")
+  }
+  // session not valid
+  req = httptest.NewRequest("GET", "/user/post/"+postID.String(), nil)
+  rr = httptest.NewRecorder()
+  handler = http.HandlerFunc(Repo.GetUpdatePost)
+  cookie := &http.Cookie{
+    Name: "session",
+    Value: "550e8400-e29b-41d4-a716-446655440010",
+    Path: "/",
+  }
+  req.AddCookie(cookie)
+  handler.ServeHTTP(rr, req)
+  if rr.Code != http.StatusTemporaryRedirect {
+    t.Error("Expected a different code")
+  }
+  // user does not own post
+  postData := url.Values{}
+  postData.Add("email", "valid@text.com")
+  postData.Add("password", "password")
+  req = httptest.NewRequest("POST", "/user/login", strings.NewReader(postData.Encode()))
+  rr = httptest.NewRecorder()
+  handler = http.HandlerFunc(Repo.PostLogin)
+  req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+  handler.ServeHTTP(rr, req)
+  if rr.Code != http.StatusSeeOther {
+    t.Error("Expected a different code")
+  }
+  var sessionCookie *http.Cookie
+  for _, cookie := range rr.Result().Cookies() {
+    if cookie.Name == "session" {
+      sessionCookie = cookie
+      break
+    }
+  }
+  if sessionCookie == nil {
+    t.Error("Session cookie was not set")
+  }
+  req = httptest.NewRequest("GET", "/user/post/"+postID.String(), nil)
+  rr = httptest.NewRecorder()
+  handler = http.HandlerFunc(Repo.GetUpdatePost)
+  req.AddCookie(sessionCookie)
+  handler.ServeHTTP(rr, req)
+  if rr.Code != http.StatusSeeOther {
+    t.Error("Expected a different code", rr.Code)
+  }
+  // ok
+  matchingPostID := uuid.New()
+  matchingPost := models.Post{
+    ID: matchingPostID,
+    Title: "Test Title",
+    Body: "Test Body",
+    UserID: "550e8400-e29b-41d4-a716-446655440010",
+    CreatedAt: time.Now(),
+    UpdatedAt: time.Now(),
+  }
+  Repo.DB.AddPost(matchingPost)
+  req = httptest.NewRequest("GET", "/user/post/"+matchingPostID.String(), nil)
+  rr = httptest.NewRecorder()
+  handler = http.HandlerFunc(Repo.GetUpdatePost)
+  req.AddCookie(sessionCookie)
+  handler.ServeHTTP(rr, req)
+  if rr.Code != http.StatusOK {
+    t.Error("Expected a different code", rr.Code)
+  }
+}
+
+func TestPostUpdatePost(t *testing.T) {
+  // post does not exist
+  req := httptest.NewRequest("POST", "/user/post/123", nil)
+  rr := httptest.NewRecorder()
+  handler := http.HandlerFunc(Repo.PostUpdatePost)
+  handler.ServeHTTP(rr, req)
+  if rr.Code != http.StatusTemporaryRedirect {
+    t.Error("Expected a different code")
+  }
+  // no session
+  postID := uuid.New()
+  newPost := models.Post{
+    ID: postID,
+    Title: "Title",
+    Body: "Body",
+    UserID: "550e8400-e29b-41d4-a716-446655440001",
+    CreatedAt: time.Now(),
+    UpdatedAt: time.Now(),
+  }
+  Repo.DB.AddPost(newPost)
+  req = httptest.NewRequest("POST", "/user/post/"+postID.String(), nil)
+  rr = httptest.NewRecorder()
+  handler = http.HandlerFunc(Repo.PostUpdatePost)
+  handler.ServeHTTP(rr, req)
+  if rr.Code != http.StatusTemporaryRedirect {
+    t.Error("Expected a different code")
+  }
+  // session not valid
+  req = httptest.NewRequest("POST", "/user/post/"+postID.String(), nil)
+  rr = httptest.NewRecorder()
+  handler = http.HandlerFunc(Repo.PostUpdatePost)
+  cookie := &http.Cookie{
+    Name: "session",
+    Value: "550e8400-e29b-41d4-a716-446655440010",
+    Path: "/",
+  }
+  req.AddCookie(cookie)
+  handler.ServeHTTP(rr, req)
+  if rr.Code != http.StatusTemporaryRedirect {
+    t.Error("Expected a different code")
+  }
+  // user does not own post
+  postData := url.Values{}
+  postData.Add("email", "valid@text.com")
+  postData.Add("password", "password")
+  req = httptest.NewRequest("POST", "/user/login", strings.NewReader(postData.Encode()))
+  rr = httptest.NewRecorder()
+  handler = http.HandlerFunc(Repo.PostLogin)
+  req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+  handler.ServeHTTP(rr, req)
+  if rr.Code != http.StatusSeeOther {
+    t.Error("Expected a different code")
+  }
+  var sessionCookie *http.Cookie
+  for _, cookie := range rr.Result().Cookies() {
+    if cookie.Name == "session" {
+      sessionCookie = cookie
+      break
+    }
+  }
+  if sessionCookie == nil {
+    t.Error("Session cookie was not set")
+  }
+  req = httptest.NewRequest("POST", "/user/post/"+postID.String(), nil)
+  rr = httptest.NewRecorder()
+  handler = http.HandlerFunc(Repo.PostUpdatePost)
+  req.AddCookie(sessionCookie)
+  handler.ServeHTTP(rr, req)
+  if rr.Code != http.StatusSeeOther {
+    t.Error("Expected a different code", rr.Code)
+  }
+  // invalid form
+  matchingPostID := uuid.New()
+  matchingPost := models.Post{
+    ID: matchingPostID,
+    Title: "Test Title",
+    Body: "Test Body",
+    UserID: "550e8400-e29b-41d4-a716-446655440010",
+    CreatedAt: time.Now(),
+    UpdatedAt: time.Now(),
+  }
+  Repo.DB.AddPost(matchingPost)
+  req, _ = http.NewRequest("POST", "/user/post/"+matchingPostID.String(), nil)
+  rr = httptest.NewRecorder()
+  handler = http.HandlerFunc(Repo.PostUpdatePost)
+  req.AddCookie(sessionCookie)
+  handler.ServeHTTP(rr, req)
+  if rr.Code != http.StatusTemporaryRedirect {
+    t.Error("Expected a different code", rr.Code)
+  }
+  // ok
+  postData = url.Values{}
+  postData.Add("Title", "Updated title")
+  postData.Add("Body", "Updated body")
+  req = httptest.NewRequest("POST", "/user/post/"+matchingPostID.String(), strings.NewReader(postData.Encode()))
+  req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+  rr = httptest.NewRecorder()
+  handler = http.HandlerFunc(Repo.PostUpdatePost)
+  req.AddCookie(sessionCookie)
+  handler.ServeHTTP(rr, req)
+  if rr.Code != http.StatusSeeOther {
+    t.Error("Expected a different code", rr.Code)
+  }
+}

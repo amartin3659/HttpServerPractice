@@ -334,12 +334,12 @@ func (m *Repository) GetUpdatePost(w http.ResponseWriter, r *http.Request) {
   // again need to be logged in, redirect if not logged in
   // grab post id from url, if doesn't exist display error
   // if exists populate fields with post data
-	path := r.URL.Path
-	postID := r.URL.Path
+  postID := strings.Split(r.URL.Path, "/")[3]
 	post, err := m.DB.GetPostByID(postID)
-  fmt.Println(path)
 	if err != nil {
 		fmt.Println("Error getting post")
+    http.Redirect(w, r, "/home", http.StatusTemporaryRedirect)
+    return
 	}
   userID := uuid.MustParse(post.UserID)
   cookie, err := r.Cookie("session")
@@ -378,8 +378,7 @@ func (m *Repository) PostUpdatePost(w http.ResponseWriter, r *http.Request) {
   // redirect to login page if session is expired
   // update post with new contents
   path := r.URL.Path
-  fmt.Println(path)
-	postID := r.URL.Path
+  postID := strings.Split(path, "/")[3]
 	post, err := m.DB.GetPostByID(postID)
 	if err != nil {
 		fmt.Println("Error getting post")
